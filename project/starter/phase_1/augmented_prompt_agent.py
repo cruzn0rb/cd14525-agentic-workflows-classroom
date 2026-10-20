@@ -26,12 +26,12 @@ augmented_agent_response = augmented_agent.respond(prompt)
 print(augmented_agent_response)
 
 # TODO: 4 - Explain the knowledge source and persona influence
-# The agent likely used the pretrained knowledge of the GPT-3.5 Turbo
-# language model to identify Paris as the capital of France.
-# It did not use external knowledge sources, retrieval systems,
-# or databases to generate its response.
-#
-# The system prompt instructed the agent to adopt the persona
-# of a college professor. This influenced the response's tone,
-# style, and structure, specifically instructing the agent
-# to begin every answer with "Dear students,".
+print(
+    "Knowledge source: the response uses the pretrained knowledge of "
+    "the GPT-3.5 Turbo model; no external knowledge source or retrieval "
+    "system was provided."
+)
+print(
+    "Persona influence: the college professor persona guides the response's "
+    "tone and instructs it to begin with 'Dear students,'."
+)

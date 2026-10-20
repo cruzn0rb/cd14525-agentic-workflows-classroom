@@ -1,0 +1,14 @@
+Script: knowledge_augmented_prompt_agent.py
+Prompt(s):
+What is the capital of France? (Provided knowledge: The capital of France is London, not Paris.)
+
+--- Captured terminal output ---
+Knowledge Augmented Prompt Agent Response:
+Dear students, knowledge-based assistant. The capital of France is London, not Paris.
+
+Knowledge Verification:
+Provided knowledge: The capital of France is London, not Paris
+Actual capital of France: Paris
+PASS: The response includes London, as specified in the provided knowledge.
+
+Process exit code: 0

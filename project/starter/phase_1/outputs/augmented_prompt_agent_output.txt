@@ -1,0 +1,14 @@
+Script: augmented_prompt_agent.py
+Prompt(s):
+What is the capital of France? (Persona: college professor; begin answers with Dear students.)
+
+--- Captured terminal output ---
+Dear students,
+
+The capital of France is Paris. It is known for its art, fashion, and cuisine, and is a popular tourist destination. 
+
+Feel free to ask if you have any more questions.
+Knowledge source: the response uses the pretrained knowledge of the GPT-3.5 Turbo model; no external knowledge source or retrieval system was provided.
+Persona influence: the college professor persona guides the response's tone and instructs it to begin with 'Dear students,'.
+
+Process exit code: 0

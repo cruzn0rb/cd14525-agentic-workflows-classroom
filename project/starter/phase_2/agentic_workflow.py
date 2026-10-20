@@ -43,6 +43,90 @@ with open(spec_path, "r", encoding="utf-8") as file:
 # Instantiate all agents
 # --------------------------------------------------
 
+required_feature_format = """
+Return product features ONLY in this exact repeated structure:
+Feature Name: <clear capability name>
+Description: <what the feature does and why it exists>
+Key Functionality: <specific capabilities or actions>
+User Benefit: <value created for the user>
+"""
+
+required_task_format = """
+Return engineering tasks ONLY in this exact repeated structure:
+Task ID: <unique identifier>
+Task Title: <brief development work title>
+Related User Story: <matching user story>
+Description: <technical work required>
+Acceptance Criteria: <testable completion requirements>
+Estimated Effort: <time or complexity estimate>
+Dependencies: <required prior work or None>
+"""
+
+required_feature_labels = (
+    "Feature Name",
+    "Description",
+    "Key Functionality",
+    "User Benefit",
+)
+
+required_task_labels = (
+    "Task ID",
+    "Task Title",
+    "Related User Story",
+    "Description",
+    "Acceptance Criteria",
+    "Estimated Effort",
+    "Dependencies",
+)
+
+
+def validate_repeated_structure(
+    content,
+    item_label,
+    required_labels,
+    section_name,
+):
+    """Raise an error unless every item uses the exact required labels."""
+    lines = [line.strip() for line in content.splitlines() if line.strip()]
+    item_prefix = f"{item_label}:"
+
+    if not lines or not lines[0].startswith(item_prefix):
+        raise ValueError(
+            f"{section_name} must contain only repeated structured items "
+            f"starting with '{item_prefix}'."
+        )
+
+    item_starts = [
+        index
+        for index, line in enumerate(lines)
+        if line.startswith(item_prefix)
+    ]
+    item_starts.append(len(lines))
+
+    for item_number, start in enumerate(item_starts[:-1], start=1):
+        item_lines = lines[start:item_starts[item_number]]
+        found_labels = []
+
+        for line in item_lines:
+            if ":" not in line:
+                continue
+
+            label, value = line.split(":", 1)
+            if label in required_labels or label.replace(" ", "").isalpha():
+                found_labels.append(label)
+                if not value.strip():
+                    raise ValueError(
+                        f"{section_name} item {item_number} has an empty "
+                        f"'{label}:' value."
+                    )
+
+        if tuple(found_labels) != tuple(required_labels):
+            raise ValueError(
+                f"{section_name} item {item_number} labels must be exactly "
+                f"{', '.join(label + ':' for label in required_labels)} "
+                f"in order; found {', '.join(label + ':' for label in found_labels)}."
+            )
+
 # Action Planning Agent
 
 knowledge_action_planning = (
@@ -126,7 +210,12 @@ persona_program_manager = (
 
 knowledge_program_manager = (
     "Features of a product are defined by organizing "
-    "similar user stories into cohesive groups."
+    "similar user stories into cohesive groups. Each feature must "
+    "describe a distinct capability, its purpose, concrete functionality, "
+    "and user value. Return every feature using all required labels in "
+    "the exact order shown; do not use numbered feature labels or add "
+    "user-story-only summaries.\n"
+    f"{required_feature_format}"
 )
 
 program_manager_knowledge_agent = KnowledgeAugmentedPromptAgent(
@@ -147,11 +236,12 @@ persona_program_manager_eval = (
 
 # TODO 8: Instantiate Program Manager Evaluation Agent
 evaluation_criteria_program_manager = (
-    "The answer should be product features that follow the following structure: "
-    "Feature Name: A clear, concise title that identifies the capability\n"
-    "Description: A brief explanation of what the feature does and its purpose\n"
-    "Key Functionality: The specific capabilities or actions the feature provides\n"
-    "User Benefit: How this feature creates value for the user"
+    "Accept only a complete list of distinct product features. Every feature "
+    "must include all four labels, in this exact order, with meaningful "
+    "feature-specific content: Feature Name, Description, Key Functionality, "
+    "User Benefit. Reject numbered/abbreviated feature summaries, missing or "
+    "reordered fields, and any content outside the repeated feature structures.\n"
+    f"Required format:\n{required_feature_format}"
 )
 
 program_manager_evaluation_agent = EvaluationAgent(
@@ -174,7 +264,11 @@ persona_dev_engineer = (
 
 knowledge_dev_engineer = (
     "Development tasks are defined by identifying what "
-    "needs to be built to implement each user story."
+    "needs to be built to implement each user story. Give each task a unique "
+    "ID, link it to the matching user story, make acceptance criteria "
+    "testable, estimate effort, and state dependencies explicitly. Return "
+    "every task using all required labels in the exact order shown.\n"
+    f"{required_task_format}"
 )
 
 development_engineer_knowledge_agent = KnowledgeAugmentedPromptAgent(
@@ -195,14 +289,14 @@ persona_dev_engineer_eval = (
 
 # TODO 9: Instantiate Development Engineer Evaluation Agent
 evaluation_criteria_dev_engineer = (
-    "The answer should be tasks following this exact structure: "
-    "Task ID: A unique identifier for tracking purposes\n"
-    "Task Title: Brief description of the specific development work\n"
-    "Related User Story: Reference to the parent user story\n"
-    "Description: Detailed explanation of the technical work required\n"
-    "Acceptance Criteria: Specific requirements that must be met for completion\n"
-    "Estimated Effort: Time or complexity estimation\n"
-    "Dependencies: Any tasks that must be completed first"
+    "Accept only engineering tasks with all seven labels in this exact order "
+    "for every task: Task ID, Task Title, Related User Story, Description, "
+    "Acceptance Criteria, Estimated Effort, Dependencies. IDs must be unique, "
+    "related stories must match the supplied user stories, criteria must be "
+    "testable, and dependencies must name prior work or say None. Reject "
+    "missing/reordered fields, numbered task summaries, and content outside "
+    "the repeated task structures.\n"
+    f"Required format:\n{required_task_format}"
 )
 
 development_engineer_evaluation_agent = EvaluationAgent(
@@ -265,7 +359,13 @@ def program_manager_support_function(query):
         f"Product Specification:\n{product_spec}\n\n"
         f"User Stories:\n{generated_user_stories}\n\n"
         "Group the user stories into cohesive product features "
-        "using the required feature structure."
+        "using the required feature structure. Final formatting instruction: "
+        "return features only. Use these exact labels, including the colon, "
+        "for every item, in this order: Feature Name:, Description:, "
+        "Key Functionality:, User Benefit:. "
+        "Repeat the full structure for each feature; include no alternate "
+        "feature or user-story summary formats.\n"
+        f"{required_feature_format}"
     )
 
     # Step 1: Generate response
@@ -278,6 +378,13 @@ def program_manager_support_function(query):
     final_response = (
         evaluation_result.get("final_response")
         or initial_response
+    )
+
+    validate_repeated_structure(
+        final_response,
+        "Feature Name",
+        required_feature_labels,
+        "Product Features",
     )
 
     generated_features = final_response
@@ -301,7 +408,13 @@ def development_engineer_support_function(query):
         f"User Stories:\n{generated_user_stories}\n\n"
         f"Product Features:\n{generated_features}\n\n"
         "Define implementation tasks with references to "
-        "the corresponding user stories."
+        "the corresponding user stories. Final formatting instruction: return "
+        "engineering tasks only. Use these exact labels, including the colon, "
+        "for every item, in this order: Task ID:, Task Title:, "
+        "Related User Story:, Description:, Acceptance Criteria:, "
+        "Estimated Effort:, Dependencies:. Repeat the full "
+        "structure for each task and include no alternate task summary format.\n"
+        f"{required_task_format}"
     )
 
     # Step 1: Generate response
@@ -314,6 +427,13 @@ def development_engineer_support_function(query):
     final_response = (
         evaluation_result.get("final_response")
         or initial_response
+    )
+
+    validate_repeated_structure(
+        final_response,
+        "Task ID",
+        required_task_labels,
+        "Engineering Tasks",
     )
 
     # Step 4: Return result
@@ -472,6 +592,32 @@ for section in sections:
         )
         print(missing_message)
         consolidated_plan.append(missing_message)
+
+
+# Validate structured sections after the consolidated plan is assembled.
+for section, item_label, required_labels in (
+    (
+        "Product Features",
+        "Feature Name",
+        required_feature_labels,
+    ),
+    (
+        "Engineering Tasks",
+        "Task ID",
+        required_task_labels,
+    ),
+):
+    section_content = "\n\n".join(
+        entry["content"]
+        for entry in completed_steps
+        if entry.get("role") == section
+    )
+    validate_repeated_structure(
+        section_content,
+        item_label,
+        required_labels,
+        section,
+    )
 
 
 # Optionally save the consolidated plan

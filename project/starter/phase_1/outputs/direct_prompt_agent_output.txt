@@ -1,0 +1,9 @@
+Script: direct_prompt_agent.py
+Prompt(s):
+What is the Capital of France?
+
+--- Captured terminal output ---
+The capital of France is Paris.
+The DirectPromptAgent generates its response using the pretrained knowledge of the GPT-3.5 Turbo model. It does not use external tools, retrieval systems, or additional context.
+
+Process exit code: 0
